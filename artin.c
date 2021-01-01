@@ -108,7 +108,7 @@ matrix_p multiply(matrix_p mat1, matrix_p mat2)
 int main(int argc, char **argv)
 {
         if (argc == 1) {
-                printf("Argument required.");
+                printf("Argument required.\n");
                 exit(0);
         }
         if (strcmp(argv[1], "-m") == 0) {
