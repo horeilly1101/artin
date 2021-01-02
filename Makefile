@@ -1,4 +1,4 @@
 default: program
 
 program:
-	gcc artin.c -o artin
+	gcc src/frac.c src/matrix.c src/main.c -o artin
