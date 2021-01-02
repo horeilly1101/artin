@@ -12,13 +12,13 @@ Artin operates according to commandline arguments. These are:
 | `-i <matrix>` | Compute the inverse of `matrix` and then print the result to `stdout`. |
 
 ### Examples
-```shell script
+```
 $ ./artin -m matrices/3x4-1.mat matrices/4x3-1.mat 
 3x3
 54.000000,98.000000,142.000000,
 246.000000,290.000000,334.000000,
 438.000000,482.000000,526.000000,
-
+$
 $ ./artin -i matrices/2x2-1.mat
 2x2
 -0.375000,0.500000,
