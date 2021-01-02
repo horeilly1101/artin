@@ -1,16 +1,56 @@
-//
-// Created by Hugh O'Reilly on 1/1/21.
-//
+// artin.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+
+typedef struct RationalNumber {
+        int num;
+        int denom;
+} frac, *frac_p;
 
 typedef struct Matrix {
         int num_rows;
         int num_cols;
         float **data;
 } matrix, *matrix_p;
+
+// There are three types of row operations. You can add a scaled version
+// of one row to another. You can swap two rows. Or you can multiple a
+// row by a constant. (Here, we add a NOP option to simplify the algorithm
+// below.)
+enum op_type{LinearCombination, Swap, Scale, Nop};
+
+typedef struct RowOperation {
+    enum op_type type;
+    int row1;
+    int row2;
+    float scale_factor;
+    // We will be constructing a linked list of row operations.
+    struct RowOperation *next;
+} op, *op_p;
+
+matrix_p        alloc_matrix(int num_rows, int num_cols);
+void            free_matrix(matrix_p mat);
+void            print_matrix(matrix_p mat);
+matrix_p        read_matrix(char *filename);
+
+float           mult(float num1, float num2);
+float           divide(float num1, float num2);
+float           add(float num1, float num2);
+float           add_id();
+
+matrix_p        matrix_mult(matrix_p mat1, matrix_p mat2);
+matrix_p        matrix_add(matrix_p mat1, matrix_p mat2);
+
+op_p            make_lc_op(int row1, int row2, float scale_factor);
+op_p            make_swap_op(int row1, int row2);
+op_p            make_scale_op(int row1, float scale_factor);
+op_p            make_nop_op();
+void            print_ops(op_p start_op);
+op_p            convert_to_rref(matrix_p mat);
+matrix_p        construct_inverse(int size, op_p start_op);
 
 /*
  * Procedures that deal with matrix space management and I/O.
@@ -57,7 +97,7 @@ void print_matrix(matrix_p mat)
         }
 }
 
-matrix_p read_file(char *filename)
+matrix_p read_matrix(char *filename)
 {
         FILE *csv = fopen(filename, "r");
         int num_rows, num_cols;
@@ -76,7 +116,31 @@ matrix_p read_file(char *filename)
 }
 
 /*
- * Procedures that deal with matrix operations.
+ * TODO Procedures that describe the field operations of the rational numbers.
+ */
+
+float mult(float num1, float num2)
+{
+        return num1 * num2;
+}
+
+float divide(float num1, float num2)
+{
+        return num1 / num2;
+}
+
+float add(float num1, float num2)
+{
+        return num1 + num2;
+}
+
+float add_id()
+{
+        return 0;
+}
+
+/*
+ * Procedures that deal with matrix arithmetic.
  */
 
 /*
@@ -85,11 +149,13 @@ matrix_p read_file(char *filename)
  * Returns:
  *      The matrix product of the form m x l.
  */
-matrix_p multiply(matrix_p mat1, matrix_p mat2)
+matrix_p matrix_mult(matrix_p mat1, matrix_p mat2)
 {
         int num_rows = mat1->num_rows;
         int num_cols = mat2->num_cols;
         int shared_length = mat1->num_cols;
+        float **data1 = mat1->data;
+        float **data2 = mat2->data;
 
         matrix_p new_mat = alloc_matrix(num_rows, num_cols);
         for (int i = 0; i < num_rows; i++) {
@@ -98,7 +164,7 @@ matrix_p multiply(matrix_p mat1, matrix_p mat2)
                         // the number of unnecessary memory operations.
                         float sum = 0;
                         for (int k = 0; k < shared_length; k++) {
-                                sum += mat1->data[i][k] * mat2->data[k][j];
+                                sum = add(sum, mult(data1[i][k], data2[k][j]));
                         }
                         new_mat->data[i][j] = sum;
                 }
@@ -112,34 +178,25 @@ matrix_p multiply(matrix_p mat1, matrix_p mat2)
  * Returns:
  *      The matrix product of the form m x n.
  */
-matrix_p add(matrix_p mat1, matrix_p mat2)
+matrix_p matrix_add(matrix_p mat1, matrix_p mat2)
 {
         int num_rows = mat1->num_rows;
         int num_cols = mat1->num_cols;
+        float **data1 = mat1->data;
+        float **data2 = mat2->data;
 
         matrix_p new_mat = alloc_matrix(num_rows, num_cols);
         for (int i = 0; i < num_rows; i++) {
                 for (int j = 0; j < num_cols; j++) {
-                        new_mat->data[i][j] = mat1->data[i][j] + mat2->data[i][j];
+                        new_mat->data[i][j] = add(data1[i][j], data2[i][j]);
                 }
         }
         return new_mat;
 }
 
-// There are three types of row operations. You can add a scaled version
-// of one row to another. You can swap two rows. Or you can multiple a
-// row by a constant. (Here, we add a NOP option to simplify the algorithm
-// below.)
-enum op_type{LinearCombination, Swap, Scale, Nop};
-
-typedef struct RowOperation {
-        enum op_type type;
-        int row1;
-        int row2;
-        float scale_factor;
-        // We will be constructing a linked list of row operations.
-        struct RowOperation *next;
-} op, *op_p;
+/*
+ * Procedures to compute the inverse of a matrix.
+ */
 
 op_p make_lc_op(int row1, int row2, float scale_factor)
 {
@@ -214,6 +271,7 @@ op_p convert_to_rref(matrix_p mat)
         op_p start_op = make_nop_op();
         op_p current_op = start_op;
         int size = mat->num_cols;
+        float **data = mat->data;
 
         // Keep track of a temp row to use when swapping rows.
         float *temp = malloc(sizeof(float) * size);
@@ -225,7 +283,7 @@ op_p convert_to_rref(matrix_p mat)
                 // in column col.
                 int non_zero_row = -1;
                 for (int row = col; row < size; row++) {
-                        if (mat->data[row][col] != 0) {
+                        if (data[row][col] != 0) {
                                 non_zero_row = row;
                                 break;
                         }
@@ -234,9 +292,10 @@ op_p convert_to_rref(matrix_p mat)
                         return NULL; // The matrix is not invertible.
 
                 // Scale the row by this value.
-                scale_factor = 1 / mat->data[non_zero_row][col];
-                for (int i = col; i < size; i++)
-                        mat->data[non_zero_row][i] *= scale_factor;
+                scale_factor = divide(1, data[non_zero_row][col]);
+                for (int i = col; i < size; i++) {
+                        data[non_zero_row][i] = mult(data[non_zero_row][i], scale_factor);
+                }
                 new_op = make_scale_op(non_zero_row, scale_factor);
                 current_op->next = new_op;
                 current_op = new_op;
@@ -245,9 +304,9 @@ op_p convert_to_rref(matrix_p mat)
                 for (int row = 0; row < size; row++) {
                         if (mat->data[row][col] == 0 || row == non_zero_row)
                                 continue;
-                        scale_factor = -1 * mat->data[row][col] / mat->data[non_zero_row][col];
+                        scale_factor = mult(-1, divide(data[row][col], data[non_zero_row][col]));
                         for (int i = col; i < size; i++)
-                                mat->data[row][i] += scale_factor * mat->data[non_zero_row][i];
+                                data[row][i] = add(data[row][i], mult(scale_factor, data[non_zero_row][i]));
                         new_op = make_lc_op(row, non_zero_row, scale_factor);
                         current_op->next = new_op;
                         current_op = new_op;
@@ -256,9 +315,9 @@ op_p convert_to_rref(matrix_p mat)
                 // Finally, if necessary, we swap non_zero_row with row col.
                 if (non_zero_row == col)
                         continue;
-                memcpy(temp, mat->data[non_zero_row], sizeof(float) * size);
-                memcpy(mat->data[non_zero_row], mat->data[col], sizeof(float) * size);
-                memcpy(mat->data[col], temp, sizeof(float) * size);
+                memcpy(temp, data[non_zero_row], sizeof(float) * size);
+                memcpy(data[non_zero_row], data[col], sizeof(float) * size);
+                memcpy(data[col], temp, sizeof(float) * size);
                 new_op = make_swap_op(non_zero_row, col);
                 current_op->next = new_op;
                 current_op = new_op;
@@ -272,10 +331,11 @@ matrix_p construct_inverse(int size, op_p start_op)
         int i;
         float *temp = malloc(sizeof(float) * size);
         matrix_p mat = alloc_matrix(size, size);
+        float **data = mat->data;
 
         // Start with the identity.
         for (i = 0; i < size; i++)
-                mat->data[i][i] = 1;
+                data[i][i] = 1;
         // Compute the row operations.
         for (op_p op = start_op; op != NULL; op = op->next) {
                 switch (op->type) {
@@ -283,16 +343,17 @@ matrix_p construct_inverse(int size, op_p start_op)
                         break;
                 case LinearCombination:
                         for (i = 0; i < size; i++)
-                                mat->data[op->row1][i] += op->scale_factor * mat->data[op->row2][i];
+                                data[op->row1][i] = add(data[op->row1][i],
+                                                        mult(op->scale_factor, data[op->row2][i]));
                         break;
                 case Swap:
-                        memcpy(temp, mat->data[op->row2], sizeof(float) * size);
-                        memcpy(mat->data[op->row2], mat->data[op->row1], sizeof(float) * size);
-                        memcpy(mat->data[op->row1], temp, sizeof(float) * size);
+                        memcpy(temp, data[op->row2], sizeof(float) * size);
+                        memcpy(data[op->row2], data[op->row1], sizeof(float) * size);
+                        memcpy(data[op->row1], temp, sizeof(float) * size);
                         break;
                 case Scale:
                         for (i = 0; i < size; i++)
-                                mat->data[op->row1][i] *= op->scale_factor;
+                                data[op->row1][i] = mult(data[op->row1][i], op->scale_factor);
                         break;
                 default:
                         break;
@@ -310,9 +371,9 @@ int main(int argc, char **argv)
         }
         // Multiply the input matrices.
         if (strcmp(argv[1], "-m") == 0) {
-                matrix_p mat1 = read_file(argv[2]);
-                matrix_p mat2 = read_file(argv[3]);
-                matrix_p product = multiply(mat1, mat2);
+                matrix_p mat1 = read_matrix(argv[2]);
+                matrix_p mat2 = read_matrix(argv[3]);
+                matrix_p product = matrix_mult(mat1, mat2);
                 print_matrix(product);
                 free_matrix(mat1);
                 free_matrix(mat2);
@@ -320,9 +381,9 @@ int main(int argc, char **argv)
         }
         // Add the input matrices.
         if (strcmp(argv[1], "-a") == 0) {
-                matrix_p mat1 = read_file(argv[2]);
-                matrix_p mat2 = read_file(argv[3]);
-                matrix_p sum = add(mat1, mat2);
+                matrix_p mat1 = read_matrix(argv[2]);
+                matrix_p mat2 = read_matrix(argv[3]);
+                matrix_p sum = matrix_add(mat1, mat2);
                 print_matrix(sum);
                 free_matrix(mat1);
                 free_matrix(mat2);
@@ -330,7 +391,7 @@ int main(int argc, char **argv)
         }
         // Compute the inverse of the input matrix.
         if (strcmp(argv[1], "-i") == 0) {
-                matrix_p mat = read_file(argv[2]);
+                matrix_p mat = read_matrix(argv[2]);
                 int size = mat->num_rows;
                 op_p start_op;
                 if ((start_op = convert_to_rref(mat)) == NULL) {
@@ -338,8 +399,6 @@ int main(int argc, char **argv)
                         exit(0);
                 }
                 free(mat);
-//                print_ops(start_op);
-//                printf("\n");
                 matrix_p inverse = construct_inverse(size, start_op);
                 print_matrix(inverse);
                 free_matrix(inverse);
