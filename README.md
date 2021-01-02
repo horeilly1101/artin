@@ -4,12 +4,12 @@
 ## How to Use
 
 Artin operates according to commandline arguments. These are:
-- `-a <matrix1> <matrix2>` adds `matrix1` and `matrix2` together in the typical way,
-and then prints the result to `stdout`.
-- `-m <matrix1> <matrix2>` multiplies `matrix1` and `matrix2` together in the 
-typical way, and then prints the result to `stdout`.
-- `-i <matrix>` computes the inverse of `matrix` and then prints the result to 
-`stdout`.
+
+| Args | Description |
+| ----- | -------- |
+|`-a <matrix1> <matrix2>`| Add `matrix1` and `matrix2` together in the typical way, and then print the result to `stdout`.|
+|`-m <matrix1> <matrix2>`| Multiply `matrix1` and `matrix2` together in the typical way, and then print the result to `stdout`.|
+|`-i <matrix>`| computes the inverse of `matrix` and then print the result to `stdout`. |
 
 ### Examples
 ```shell script
