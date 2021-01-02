@@ -76,8 +76,7 @@ matrix_p read_file(char *filename)
 }
 
 /*
- * Procedures that deal with matrix operations. Note that our operations are
- * functional, in the sense that we don't perform them in-place.
+ * Procedures that deal with matrix operations.
  */
 
 /*
@@ -97,9 +96,10 @@ matrix_p multiply(matrix_p mat1, matrix_p mat2)
                 for (int j = 0; j < num_cols; j++) {
                         // Keeping this in a variable on the stack reduces
                         // the number of unnecessary memory operations.
-                        int sum = 0;
-                        for (int k = 0; k < shared_length; k++)
+                        float sum = 0;
+                        for (int k = 0; k < shared_length; k++) {
                                 sum += mat1->data[i][k] * mat2->data[k][j];
+                        }
                         new_mat->data[i][j] = sum;
                 }
         }
@@ -185,7 +185,31 @@ op_p make_nop_op()
         return new_op;
 }
 
-op_p convert_to_row_eschelon(matrix_p mat)
+void print_ops(op_p start_op)
+{
+        for (op_p op = start_op; op != NULL; op = op->next) {
+                switch (op->type) {
+                case Nop:
+                        printf("Nop.\n");
+                        break;
+                case LinearCombination:
+                        printf("Compute row %d += %f * row %d.\n", op->row1,
+                                op->scale_factor, op->row2);
+                        break;
+                case Swap:
+                        printf("Swap rows %d and %d.\n", op->row1, op->row2);
+                        break;
+                case Scale:
+                        printf("Scale row %d by %f.\n", op->row1,
+                                op->scale_factor);
+                        break;
+                default:
+                        break;
+                }
+        }
+}
+
+op_p convert_to_rref(matrix_p mat)
 {
         op_p start_op = make_nop_op();
         op_p current_op = start_op;
@@ -221,9 +245,9 @@ op_p convert_to_row_eschelon(matrix_p mat)
                 for (int row = 0; row < size; row++) {
                         if (mat->data[row][col] == 0 || row == non_zero_row)
                                 continue;
-                        scale_factor = mat->data[row][col] / mat->data[non_zero_row][col];
+                        scale_factor = -1 * mat->data[row][col] / mat->data[non_zero_row][col];
                         for (int i = col; i < size; i++)
-                                mat->data[row][i] = mat->data[row][i] - scale_factor * mat->data[non_zero_row][i];
+                                mat->data[row][i] += scale_factor * mat->data[non_zero_row][i];
                         new_op = make_lc_op(row, non_zero_row, scale_factor);
                         current_op->next = new_op;
                         current_op = new_op;
@@ -239,10 +263,44 @@ op_p convert_to_row_eschelon(matrix_p mat)
                 current_op->next = new_op;
                 current_op = new_op;
         }
+        free(temp);
         return start_op;
 }
 
+matrix_p construct_inverse(int size, op_p start_op)
+{
+        int i;
+        float *temp = malloc(sizeof(float) * size);
+        matrix_p mat = alloc_matrix(size, size);
 
+        // Start with the identity.
+        for (i = 0; i < size; i++)
+                mat->data[i][i] = 1;
+        // Compute the row operations.
+        for (op_p op = start_op; op != NULL; op = op->next) {
+                switch (op->type) {
+                case Nop:
+                        break;
+                case LinearCombination:
+                        for (i = 0; i < size; i++)
+                                mat->data[op->row1][i] += op->scale_factor * mat->data[op->row2][i];
+                        break;
+                case Swap:
+                        memcpy(temp, mat->data[op->row2], sizeof(float) * size);
+                        memcpy(mat->data[op->row2], mat->data[op->row1], sizeof(float) * size);
+                        memcpy(mat->data[op->row1], temp, sizeof(float) * size);
+                        break;
+                case Scale:
+                        for (i = 0; i < size; i++)
+                                mat->data[op->row1][i] *= op->scale_factor;
+                        break;
+                default:
+                        break;
+                }
+        }
+        free(temp);
+        return mat;
+}
 
 int main(int argc, char **argv)
 {
@@ -273,11 +331,17 @@ int main(int argc, char **argv)
         // Compute the inverse of the input matrix.
         if (strcmp(argv[1], "-i") == 0) {
                 matrix_p mat = read_file(argv[2]);
-                if (convert_to_row_eschelon(mat) == NULL) {
+                int size = mat->num_rows;
+                op_p start_op;
+                if ((start_op = convert_to_rref(mat)) == NULL) {
                         printf("Not invertible.\n");
                         exit(0);
                 }
-                print_matrix(mat);
-                free_matrix(mat);
+                free(mat);
+//                print_ops(start_op);
+//                printf("\n");
+                matrix_p inverse = construct_inverse(size, start_op);
+                print_matrix(inverse);
+                free_matrix(inverse);
         }
 }
