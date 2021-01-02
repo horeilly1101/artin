@@ -1,4 +1,4 @@
-// frac.c
+// frac.h
 
 #ifndef FRAC_H
 #define FRAC_H

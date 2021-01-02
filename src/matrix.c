@@ -90,7 +90,7 @@ matrix_p read_matrix(char *filename)
  * Effects:
  *      Returns the matrix product of the form m x l.
  */
-matrix_p matrix_mult(matrix_p mat1, matrix_p mat2)
+matrix_p mult_matrix(matrix_p mat1, matrix_p mat2)
 {
         int num_rows = mat1->num_rows;
         int num_cols = mat2->num_cols;
@@ -119,7 +119,7 @@ matrix_p matrix_mult(matrix_p mat1, matrix_p mat2)
  * Returns:
  *      The matrix product of the form m x n.
  */
-matrix_p matrix_add(matrix_p mat1, matrix_p mat2)
+matrix_p add_matrix(matrix_p mat1, matrix_p mat2)
 {
         int num_rows = mat1->num_rows;
         int num_cols = mat1->num_cols;

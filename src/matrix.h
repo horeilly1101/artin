@@ -22,7 +22,7 @@ typedef struct RowOperation {
     int row1;
     int row2;
     float scale_factor;
-    // You can construct a linked list of row operations.
+    // We want to construct a linked list of row operations.
     struct RowOperation *next;
 } op, *op_p;
 
@@ -31,8 +31,8 @@ void            free_matrix(matrix_p mat);
 void            print_matrix(matrix_p mat);
 matrix_p        read_matrix(char *filename);
 
-matrix_p        matrix_mult(matrix_p mat1, matrix_p mat2);
-matrix_p        matrix_add(matrix_p mat1, matrix_p mat2);
+matrix_p        mult_matrix(matrix_p mat1, matrix_p mat2);
+matrix_p        add_matrix(matrix_p mat1, matrix_p mat2);
 
 op_p            make_lc_op(int row1, int row2, float scale_factor);
 op_p            make_swap_op(int row1, int row2);
