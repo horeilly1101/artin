@@ -1,4 +1,4 @@
-default: artin
+default: program
 
-artin:
+program:
 	gcc artin.c -o artin
