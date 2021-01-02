@@ -2,6 +2,8 @@
 
 #include "frac.h"
 
+
+
 /*
  * TODO Procedures that describe the field operations of the rational numbers.
  */

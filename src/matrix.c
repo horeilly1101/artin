@@ -287,13 +287,13 @@ op_p convert_to_rref(matrix_p mat)
 
 void apply_ops(matrix_p mat, op_p start_op)
 {
-        int i;
+        op_p op;
         int num_cols = mat->num_cols;
         float **data = mat->data;
         float *temp = malloc(sizeof(float *) * num_cols);
 
         // Compute the row operations.
-        for (op_p op = start_op; op != NULL; op = op->next) {
+        for (op = start_op; op != NULL; op = op->next) {
                 switch (op->type) {
                 case Nop:
                         break;
