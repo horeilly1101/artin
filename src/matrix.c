@@ -183,6 +183,28 @@ op_p make_nop_op()
         return new_op;
 }
 
+void compute_lc(float *row1_p, float *row2_p, float scale_factor, int num_cols)
+{
+        int i;
+        for (i = 0; i < num_cols; i++)
+                row1_p[i] = add(row1_p[i], mult(scale_factor, row2_p[i]));
+}
+
+void compute_swap(float *row1_p, float *row2_p, int num_cols)
+{
+        float temp[num_cols];
+        memcpy(temp, row2_p, sizeof(float) * num_cols);
+        memcpy(row2_p, row1_p, sizeof(float) * num_cols);
+        memcpy(row1_p, temp, sizeof(float) * num_cols);
+}
+
+void compute_scale(float *row_p, float scale_factor, int num_cols)
+{
+        int i;
+        for (i = 0; i < num_cols; i++)
+                row_p[i] = mult(row_p[i], scale_factor);
+}
+
 void print_ops(op_p start_op)
 {
         for (op_p op = start_op; op != NULL; op = op->next) {
@@ -209,17 +231,19 @@ void print_ops(op_p start_op)
 
 op_p convert_to_rref(matrix_p mat)
 {
+        int col, row;
+        op_p new_op;
+        float scale_factor;
+
         op_p start_op = make_nop_op();
         op_p current_op = start_op;
         int size = mat->num_cols;
         float **data = mat->data;
 
-        // Keep track of a temp row to use when swapping rows.
-        float *temp = malloc(sizeof(float) * size);
-        op_p new_op;
-        float scale_factor;
-
-        for (int col = 0; col < size; col++) {
+        // Use the typical algorithm to convert mat into reduced row
+        // echelon form. At each step, we keep track of the row operation
+        // performed.
+        for (col = 0; col < size; col++) {
                 // Move down from the top and find the first nonzero element
                 // in column col.
                 int non_zero_row = -1;
@@ -234,20 +258,17 @@ op_p convert_to_rref(matrix_p mat)
 
                 // Scale the row by this value.
                 scale_factor = divide(1, data[non_zero_row][col]);
-                for (int i = col; i < size; i++) {
-                        data[non_zero_row][i] = mult(data[non_zero_row][i], scale_factor);
-                }
+                compute_scale(data[non_zero_row], scale_factor, size);
                 new_op = make_scale_op(non_zero_row, scale_factor);
                 current_op->next = new_op;
                 current_op = new_op;
 
                 // Zero out the remaining rows in the column.
-                for (int row = 0; row < size; row++) {
+                for (row = 0; row < size; row++) {
                         if (data[row][col] == 0 || row == non_zero_row)
                                 continue;
                         scale_factor = mult(-1, divide(data[row][col], data[non_zero_row][col]));
-                        for (int i = col; i < size; i++)
-                                data[row][i] = add(data[row][i], mult(scale_factor, data[non_zero_row][i]));
+                        compute_lc(data[row], data[non_zero_row], scale_factor, size);
                         new_op = make_lc_op(row, non_zero_row, scale_factor);
                         current_op->next = new_op;
                         current_op = new_op;
@@ -256,14 +277,11 @@ op_p convert_to_rref(matrix_p mat)
                 // Finally, if necessary, we swap non_zero_row with row col.
                 if (non_zero_row == col)
                         continue;
-                memcpy(temp, data[non_zero_row], sizeof(float) * size);
-                memcpy(data[non_zero_row], data[col], sizeof(float) * size);
-                memcpy(data[col], temp, sizeof(float) * size);
+                compute_swap(data[non_zero_row], data[col], size);
                 new_op = make_swap_op(non_zero_row, col);
                 current_op->next = new_op;
                 current_op = new_op;
         }
-        free(temp);
         return start_op;
 }
 
@@ -272,7 +290,7 @@ void apply_ops(matrix_p mat, op_p start_op)
         int i;
         int num_cols = mat->num_cols;
         float **data = mat->data;
-        float *temp = malloc(sizeof(float) * num_cols);
+        float *temp = malloc(sizeof(float *) * num_cols);
 
         // Compute the row operations.
         for (op_p op = start_op; op != NULL; op = op->next) {
@@ -280,18 +298,13 @@ void apply_ops(matrix_p mat, op_p start_op)
                 case Nop:
                         break;
                 case LinearCombination:
-                        for (i = 0; i < num_cols; i++)
-                                data[op->row1][i] = add(data[op->row1][i],
-                                                        mult(op->scale_factor, data[op->row2][i]));
+                        compute_lc(data[op->row1], data[op->row2], op->scale_factor, num_cols);
                         break;
                 case Swap:
-                        memcpy(temp, data[op->row2], sizeof(float) * num_cols);
-                        memcpy(data[op->row2], data[op->row1], sizeof(float) * num_cols);
-                        memcpy(data[op->row1], temp, sizeof(float) * num_cols);
+                        compute_swap(data[op->row1], data[op->row2], num_cols);
                         break;
                 case Scale:
-                        for (i = 0; i < num_cols; i++)
-                                data[op->row1][i] = mult(data[op->row1][i], op->scale_factor);
+                        compute_scale(data[op->row1], op->scale_factor, num_cols);
                         break;
                 default:
                         break;

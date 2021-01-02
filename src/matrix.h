@@ -38,6 +38,10 @@ op_p            make_lc_op(int row1, int row2, float scale_factor);
 op_p            make_swap_op(int row1, int row2);
 op_p            make_scale_op(int row1, float scale_factor);
 op_p            make_nop_op();
+void            compute_lc(float *row1_p, float *row2_p, float scale_factor,
+                           int num_cols);
+void            compute_swap(float *row1_p, float *row2_p, int num_cols);
+void            compute_scale(float *row_p, float scale_factor, int num_cols);
 void            print_ops(op_p start_op);
 op_p            convert_to_rref(matrix_p mat);
 void            apply_ops(matrix_p mat, op_p start_op);
