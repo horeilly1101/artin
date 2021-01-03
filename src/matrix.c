@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "frac.h"
 #include "matrix.h"
 
 /*
@@ -105,7 +104,7 @@ matrix_p mult_matrix(matrix_p mat1, matrix_p mat2)
                         // the number of unnecessary memory operations.
                         float sum = 0;
                         for (int k = 0; k < shared_length; k++) {
-                                sum = add(sum, mult(data1[i][k], data2[k][j]));
+                                sum += data1[i][k] * data2[k][j];
                         }
                         new_mat->data[i][j] = sum;
                 }
@@ -129,7 +128,7 @@ matrix_p add_matrix(matrix_p mat1, matrix_p mat2)
         matrix_p new_mat = alloc_matrix(num_rows, num_cols);
         for (int i = 0; i < num_rows; i++) {
                 for (int j = 0; j < num_cols; j++) {
-                        new_mat->data[i][j] = add(data1[i][j], data2[i][j]);
+                        new_mat->data[i][j] = data1[i][j] + data2[i][j];
                 }
         }
         return new_mat;
@@ -187,7 +186,7 @@ void compute_lc(float *row1_p, float *row2_p, float scale_factor, int num_cols)
 {
         int i;
         for (i = 0; i < num_cols; i++)
-                row1_p[i] = add(row1_p[i], mult(scale_factor, row2_p[i]));
+                row1_p[i] += scale_factor * row2_p[i];
 }
 
 void compute_swap(float *row1_p, float *row2_p, int num_cols)
@@ -202,7 +201,7 @@ void compute_scale(float *row_p, float scale_factor, int num_cols)
 {
         int i;
         for (i = 0; i < num_cols; i++)
-                row_p[i] = mult(row_p[i], scale_factor);
+                row_p[i] *= scale_factor;
 }
 
 void print_ops(op_p start_op)
@@ -257,7 +256,7 @@ op_p convert_to_rref(matrix_p mat)
                         return NULL; // The matrix is not invertible.
 
                 // Scale the row by this value.
-                scale_factor = divide(1, data[non_zero_row][col]);
+                scale_factor = 1 / data[non_zero_row][col];
                 compute_scale(data[non_zero_row], scale_factor, size);
                 new_op = make_scale_op(non_zero_row, scale_factor);
                 current_op->next = new_op;
@@ -267,7 +266,7 @@ op_p convert_to_rref(matrix_p mat)
                 for (row = 0; row < size; row++) {
                         if (data[row][col] == 0 || row == non_zero_row)
                                 continue;
-                        scale_factor = mult(-1, divide(data[row][col], data[non_zero_row][col]));
+                        scale_factor = -1 * (data[row][col] / data[non_zero_row][col]);
                         compute_lc(data[row], data[non_zero_row], scale_factor, size);
                         new_op = make_lc_op(row, non_zero_row, scale_factor);
                         current_op->next = new_op;

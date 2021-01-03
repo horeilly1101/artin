@@ -3,8 +3,6 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include "frac.h"
-
 typedef struct Matrix {
     int num_rows;
     int num_cols;

@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "frac.h"
 #include "matrix.h"
 
 int main(int argc, char **argv)
