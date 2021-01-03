@@ -1,5 +1,5 @@
 # artin
-> A collection of matrix operations over the field of rationals.
+> A collection of matrix operations on floating point numbers.
 
 ## How to Use
 
